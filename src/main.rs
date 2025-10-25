@@ -1,4 +1,5 @@
 mod cli;
+mod open;
 mod pipeline;
 
 use anyhow::Result;
@@ -12,6 +13,10 @@ fn main() -> Result<()> {
 
     for p in &picks {
         println!("{p}");
+    }
+
+    if let Some(cmd) = args.open {
+        open::open_with(&cmd, &picks)?;
     }
 
     Ok(())
