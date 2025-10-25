@@ -1,4 +1,4 @@
-use crate::cli::Args;
+use crate::settings::Settings;
 use anyhow::{Context, Result};
 use std::ffi::OsString;
 use std::process::{Command, Stdio};
@@ -6,12 +6,14 @@ use which::which;
 
 pub fn check_binaries() -> Result<()> {
     for bin in ["rg", "sk"] {
-        which(bin).with_context(|| format!("{bin} not found in PATH"))?;
+        which(bin).with_context(|| {
+            format!("{bin} not found in PATH. Try installing it with cargo install {bin}")
+        })?;
     }
     Ok(())
 }
 
-fn build_rg_args(args: &Args) -> Vec<OsString> {
+fn build_rg_args(args: &Settings) -> Vec<OsString> {
     let mut v = vec!["-l".into(), "--color=never".into(), "--no-messages".into()];
     v.push(args.pattern.clone().into());
     v.push(args.path.clone().into_os_string());
@@ -27,7 +29,7 @@ fn preview_cmd(pattern: &str) -> String {
 }
 
 // Build arguments for skim
-fn build_sk_args(args: &Args) -> Vec<OsString> {
+fn build_sk_args(s: &Settings) -> Vec<OsString> {
     let mut v = vec![
         "--ansi".into(),
         "--prompt".into(),
@@ -36,24 +38,24 @@ fn build_sk_args(args: &Args) -> Vec<OsString> {
         "--expect".into(),
         "enter".into(),
     ];
-    if !args.no_preview {
+    if !s.no_preview {
         v.push("--preview".into());
-        v.push(preview_cmd(&args.pattern).into());
+        v.push(preview_cmd(&s.pattern).into());
         v.push("--preview-window".into());
         v.push("right:60%".into());
     }
     v
 }
 
-pub fn run_pipeline(args: &Args) -> Result<Vec<String>> {
+pub fn run_pipeline(s: &Settings) -> Result<Vec<String>> {
     let mut rg = Command::new("rg")
-        .args(build_rg_args(args))
+        .args(build_rg_args(s))
         .stdout(Stdio::piped())
         .spawn()
         .context("failed to launch ripgrep")?;
 
     let mut sk = Command::new("sk")
-        .args(build_sk_args(args))
+        .args(build_sk_args(s))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
