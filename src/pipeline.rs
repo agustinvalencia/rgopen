@@ -15,17 +15,63 @@ pub fn check_binaries() -> Result<()> {
 
 fn build_rg_args(args: &Settings) -> Vec<OsString> {
     let mut v = vec!["-l".into(), "--color=never".into(), "--no-messages".into()];
+    if args.ignore_case {
+        v.push("-i".into())
+    };
+    if args.hidden {
+        v.push("--hidden".into())
+    };
+    if args.follow {
+        v.push("-L".into())
+    };
+    if args.no_ignore {
+        v.push("-uu".into())
+    };
+    v.push("--".into());
+
     v.push(args.pattern.clone().into());
     v.push(args.path.clone().into_os_string());
     v
 }
 
 // Preview command for skim
-fn preview_cmd(pattern: &str) -> String {
-    format!(
-        "rg --color=always --line-number '{}' {{}} | head -n 200",
-        pattern.replace('\'', "'\"'\"'")
-    )
+fn preview_cmd(s: &Settings) -> String {
+    let prev_context = s.preview_context.to_string();
+    let mut flags = vec![
+        "--color=always",
+        "--line-number",
+        "--max-columns=300",
+        "--no-messages",
+        "--context",
+        &prev_context,
+    ];
+    if s.ignore_case {
+        flags.push("-i");
+    }
+    if s.hidden {
+        flags.push("--hidden");
+    }
+    if s.follow {
+        flags.push("-L");
+    }
+    if s.no_ignore {
+        flags.push("-uu");
+    }
+
+    if cfg!(windows) {
+        format!(
+            "powershell -NoProfile -Command rg {flags} -- '{pat}' '{{}}' | Select-Object -First 200",
+            flags = flags.join(" "),
+            pat = s.pattern.replace('"', "`\"")
+        )
+    } else {
+        let pat_posix = s.pattern.replace('\'', "'\"'\"'");
+        format!(
+            "sh -c \"rg {flags} -- '{pat}' '{{}}' | head -n 200\"",
+            flags = flags.join(" "),
+            pat = pat_posix
+        )
+    }
 }
 
 // Build arguments for skim
@@ -38,11 +84,14 @@ fn build_sk_args(s: &Settings) -> Vec<OsString> {
         "--expect".into(),
         "enter".into(),
     ];
+    if s.multi {
+        v.push("--multi".into());
+    }
     if !s.no_preview {
         v.push("--preview".into());
-        v.push(preview_cmd(&s.pattern).into());
+        v.push(preview_cmd(&s).into());
         v.push("--preview-window".into());
-        v.push("right:60%".into());
+        v.push(s.preview_width.clone().into());
     }
     v
 }

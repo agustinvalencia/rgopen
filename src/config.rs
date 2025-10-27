@@ -6,8 +6,15 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Default)]
 pub struct Config {
+    pub ignore_case: Option<bool>,
+    pub hidden: Option<bool>,
+    pub follow: Option<bool>,
+    pub no_ignore: Option<bool>,
+    pub multi: Option<bool>,
     pub no_preview: Option<bool>,
     pub open: Option<String>,
+    pub preview_width: Option<String>,
+    pub preview_context: Option<usize>,
 }
 
 pub fn load_config() -> Result<Config> {
